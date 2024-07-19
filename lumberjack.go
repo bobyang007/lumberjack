@@ -32,7 +32,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -207,10 +206,10 @@ func (l *Logger) rotate() error {
 // openNew opens a new log file for writing, moving any old log file out of the
 // way.  This methods assumes the file has already been closed.
 func (l *Logger) openNew() error {
-	oldMask := syscall.Umask(0)
+	oldMask := Umask(0)
 	err := os.MkdirAll(l.dir(), 0777)
 	if err != nil {
-		syscall.Umask(oldMask)
+		Umask(oldMask)
 		return fmt.Errorf("can't make directories for new logfile: %s", err)
 	}
 
@@ -223,13 +222,13 @@ func (l *Logger) openNew() error {
 		// move the existing file
 		newname := backupName(name, l.LocalTime)
 		if err := os.Rename(name, newname); err != nil {
-			syscall.Umask(oldMask)
+			Umask(oldMask)
 			return fmt.Errorf("can't rename log file: %s", err)
 		}
 
 		// this is a no-op anywhere but linux
 		if err := chown(name, info); err != nil {
-			syscall.Umask(oldMask)
+			Umask(oldMask)
 			return err
 		}
 	}
@@ -239,12 +238,12 @@ func (l *Logger) openNew() error {
 	// just wipe out the contents.
 	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 	if err != nil {
-		syscall.Umask(oldMask)
+		Umask(oldMask)
 		return fmt.Errorf("can't open new logfile: %s", err)
 	}
 	l.file = f
 	l.size = 0
-	syscall.Umask(oldMask)
+	Umask(oldMask)
 	return nil
 }
 
@@ -283,9 +282,9 @@ func (l *Logger) openExistingOrNew(writeLen int) error {
 	if info.Size()+int64(writeLen) >= l.max() {
 		return l.rotate()
 	}
-	oldMask := syscall.Umask(0)
+	oldMask := Umask(0)
 	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0777)
-	syscall.Umask(oldMask)
+	Umask(oldMask)
 	if err != nil {
 		// if we fail to open the old log file for some reason, just ignore
 		// it and open a new log file.
